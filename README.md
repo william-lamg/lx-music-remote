@@ -2,6 +2,8 @@
 
 一個網頁版嘅 LX Music（洛雪音樂）遙控器，支援區域網手機控制。
 
+> 基於 [LX Music 開放 API](https://lxmusic.toside.cn/desktop/open-api)（v2.7.0+）開發
+
 ## 功能
 
 - 📱 **手機遙控** — 同一 Wi-Fi 用手機控制電腦嘅 LX Music
