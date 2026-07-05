@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LX Music 遙控器</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --text2: #86868b;
+    --accent: #007aff;
+    --accent2: #5856d6;
+    --border: #d2d2d7;
+    --shadow: 0 8px 30px rgba(0,0,0,0.08);
+    --radius: 16px;
+    --green: #34c759;
+    --red: #ff3b30;
+    --orange: #ff9500;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+  .container {
+    max-width: 420px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .header .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--red);
+    display: inline-block;
+    transition: background 0.3s;
+  }
+  .header .status-dot.connected { background: var(--green); }
+  .header .status-dot.loading { background: var(--orange); animation: pulse 1s infinite; }
+
+  /* Config bar */
+  .config-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .config-bar input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    background: var(--card);
+    color: var(--text);
+  }
+  .config-bar input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,122,255,0.15);
+  }
+  .btn-sm {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--accent);
+    color: #fff;
+    transition: opacity 0.2s;
+  }
+  .btn-sm:hover { opacity: 0.85; }
+  .btn-sm.secondary {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+  }
+
+  /* Now Playing */
+  .now-playing {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .cover {
+    width: 80px; height: 80px;
+    border-radius: 12px;
+    background: #e0e0e0;
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: #999;
+  }
+  .cover img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  .info {
+    flex: 1;
+    min-width: 0;
+  }
+  .info .title {
+    font-size: 17px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .info .artist {
+    font-size: 14px;
+    color: var(--text2);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .info .album {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .info .status-badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 6px;
+    font-weight: 600;
+  }
+  .badge-playing { background: #d1fae5; color: #065f46; }
+  .badge-paused  { background: #fef3c7; color: #92400e; }
+  .badge-stoped  { background: #e5e7eb; color: #374151; }
+  .badge-error   { background: #fee2e2; color: #991b1b; }
+
+  /* Progress */
+  .progress-section {
+    margin-top: 14px;
+  }
+  .progress-bar {
+    width: 100%; height: 5px;
+    background: #e5e5ea;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-bar .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+  .progress-bar .seek-hover {
+    position: absolute; top: -4px; bottom: -4px; left: 0; right: 0;
+  }
+  .time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 8px 0;
+  }
+  .ctrl-btn {
+    width: 48px; height: 48px;
+    border: none;
+    border-radius: 50%;
+    background: #f0f0f0;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .ctrl-btn:hover {
+    background: #e0e0e0;
+    transform: scale(1.05);
+  }
+  .ctrl-btn:active {
+    transform: scale(0.95);
+  }
+  .ctrl-btn.play-btn {
+    width: 56px; height: 56px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 24px;
+  }
+  .ctrl-btn.play-btn:hover {
+    background: #0066d6;
+  }
+  .ctrl-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Volume */
+  .volume-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .volume-section .vol-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+  }
+  .volume-section input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: #e5e5ea;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+  .volume-section input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    cursor: pointer;
+  }
+  .volume-section .vol-val {
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 32px;
+    text-align: right;
+    color: var(--text2);
+  }
+  .mute-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: background 0.2s;
+    color: var(--text);
+  }
+  .mute-btn:hover { background: #e5e5ea; }
+  .mute-btn.muted { color: var(--red); }
+
+  /* Lyrics */
+  .lyrics-section {
+    max-height: 200px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+  .lyrics-section::-webkit-scrollbar { width: 3px; }
+  .lyrics-section::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .lyrics-section .lrc-line {
+    padding: 4px 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text2);
+    transition: all 0.2s;
+  }
+  .lyrics-section .lrc-line.active {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .lyrics-empty {
+    text-align: center;
+    color: var(--text2);
+    font-size: 14px;
+    padding: 20px 0;
+  }
+
+  /* Collect btn */
+  .collect-section {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .collect-btn {
+    padding: 8px 18px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .collect-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .collect-btn.collected { border-color: var(--red); color: var(--red); }
+
+  /* Section title */
+  .section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 12px; }
+    .card { padding: 16px; }
+    .cover { width: 64px; height: 64px; font-size: 26px; }
+    .info .title { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🎵 LX 遙控</h1>
+    <div>
+      <span id="statusDot" class="status-dot"></span>
+    </div>
+  </div>
+
+  <!-- Config -->
+  <div class="config-bar">
+    <input id="apiUrl" type="text" value="http://127.0.0.1:23330" placeholder="API 地址">
+    <button class="btn-sm secondary" onclick="resetUrl()">預設</button>
+    <button class="btn-sm" onclick="connect()">連接</button>
+  </div>
+
+  <!-- Now Playing -->
+  <div class="card">
+    <div class="now-playing">
+      <div class="cover" id="coverBox">
+        <span id="coverIcon">🎵</span>
+      </div>
+      <div class="info">
+        <div class="title" id="songTitle">未在播放</div>
+        <div class="artist" id="songArtist">-</div>
+        <div class="album" id="songAlbum">-</div>
+        <span id="statusBadge" class="status-badge badge-stoped">已停止</span>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-section">
+      <div class="progress-bar" id="progressBar" onclick="seekClick(event)">
+        <div class="fill" id="progressFill"></div>
+      </div>
+      <div class="time-row">
+        <span id="currentTime">0:00</span>
+        <span id="totalTime">0:00</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="ctrl-btn" onclick="apiCall('/skip-prev')" title="上一首">⏮</button>
+      <button class="ctrl-btn play-btn" id="playBtn" onclick="togglePlay()" title="播放/暫停">▶</button>
+      <button class="ctrl-btn" onclick="apiCall('/skip-next')" title="下一首">⏭</button>
+    </div>
+
+    <!-- Volume -->
+    <div class="volume-section">
+      <button class="mute-btn" id="muteBtn" onclick="toggleMute()" title="靜音">🔊</button>
+      <input type="range" id="volumeSlider" min="0" max="100" value="80" oninput="setVolume(this.value)">
+      <span class="vol-val" id="volumeLabel">80</span>
+    </div>
+  </div>
+
+  <!-- Lyrics -->
+  <div class="card">
+    <div class="section-title">
+      <span>📃</span> 歌詞
+      <span id="lyricInfo" style="font-size:11px;color:var(--text2);font-weight:400;margin-left:auto;"></span>
+    </div>
+    <div class="lyrics-section" id="lyricsContainer">
+      <div class="lyrics-empty">等待播放中...</div>
+    </div>
+  </div>
+
+  <!-- Collect -->
+  <div class="card">
+    <div class="collect-section">
+      <button class="collect-btn" id="collectBtn" onclick="toggleCollect()">
+        ♡ 收藏當前歌曲
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// === State ===
+let apiBase = 'http://127.0.0.1:23330';
+let isPlaying = false;
+let isMuted = false;
+let volume = 80;
+let isCollected = false;
+let playerStatus = 'stoped';
+let progressTimer = null;
+let eventSource = null;
+let lastLrc = '';
+
+// === DOM refs ===
+const $ = id => document.getElementById(id);
+const statusDot = $('statusDot');
+const songTitle = $('songTitle');
+const songArtist = $('songArtist');
+const songAlbum = $('songAlbum');
+const statusBadge = $('statusBadge');
+const coverBox = $('coverBox');
+const coverIcon = $('coverIcon');
+const progressFill = $('progressFill');
+const currentTime = $('currentTime');
+const totalTime = $('totalTime');
+const playBtn = $('playBtn');
+const volumeSlider = $('volumeSlider');
+const volumeLabel = $('volumeLabel');
+const muteBtn = $('muteBtn');
+const lyricsContainer = $('lyricsContainer');
+const lyricInfo = $('lyricInfo');
+const collectBtn = $('collectBtn');
+const apiUrlInput = $('apiUrl');
+
+// === Helpers ===
+function fmtTime(sec) {
+  if (!sec || isNaN(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function setConnected(ok) {
+  statusDot.className = 'status-dot' + (ok === null ? ' loading' : ok ? ' connected' : '');
+}
+
+// === API call ===
+async function apiCall(path, params = {}) {
+  const qs = Object.keys(params).length ? '?' + new URLSearchParams(params) : '';
+  const url = apiBase + path + qs;
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (path === '/status') return await r.json();
+    return r;
+  } catch (e) {
+    setConnected(false);
+    console.warn('API 請求失敗:', path, e);
+    return null;
+  }
+}
+
+async function apiCallSimple(path) {
+  try {
+    await fetch(apiBase + path, { signal: AbortSignal.timeout(3000) });
+  } catch (e) {
+    setConnected(false);
+  }
+}
+
+// === Fetch status ===
+async function fetchStatus() {
+  const data = await apiCall('/status');
+  if (!data) return;
+  setConnected(true);
+
+  playerStatus = data.status || 'stoped';
+  isPlaying = playerStatus === 'playing';
+  isCollected = !!data.collect;
+
+  // Song info
+  songTitle.textContent = data.name || '未在播放';
+  songArtist.textContent = data.singer || '-';
+  songAlbum.textContent = data.albumName || '-';
+
+  // Status badge
+  const badgeMap = {
+    playing: ['播放中', 'badge-playing', '▶'],
+    paused: ['已暫停', 'badge-paused', '⏸'],
+    stoped: ['已停止', 'badge-stoped', '⏹'],
+    error: ['錯誤', 'badge-error', '⚠'],
+  };
+  const [badgeText, badgeClass, playIcon] = badgeMap[playerStatus] || badgeMap.stoped;
+  statusBadge.textContent = badgeText;
+  statusBadge.className = 'status-badge ' + badgeClass;
+
+  // Play button
+  playBtn.textContent = isPlaying ? '⏸' : '▶';
+
+  // Cover
+  if (data.picUrl) {
+    coverBox.innerHTML = `<img src="${data.picUrl}" alt="cover" onerror="this.parentElement.innerHTML='<span id=coverIcon>🎵</span>'">`;
+  } else {
+    coverBox.innerHTML = '<span id="coverIcon">🎵</span>';
+  }
+
+  // Progress
+  const dur = data.duration || 0;
+  const prog = data.progress || 0;
+  const pct = dur > 0 ? (prog / dur * 100) : 0;
+  progressFill.style.width = Math.min(pct, 100) + '%';
+  currentTime.textContent = fmtTime(prog);
+  totalTime.textContent = fmtTime(dur);
+
+  // Volume
+  if (data.volume !== undefined) {
+    volume = data.volume;
+    volumeSlider.value = volume;
+    volumeLabel.textContent = volume;
+  }
+  if (data.mute !== undefined) {
+    isMuted = data.mute;
+    muteBtn.textContent = isMuted ? '🔇' : volume > 50 ? '🔊' : volume > 0 ? '🔉' : '🔈';
+    muteBtn.classList.toggle('muted', isMuted);
+  }
+
+  // Collect
+  updateCollectBtn();
+
+  // Lyrics line
+  if (data.lyricLineText && data.lyricLineText !== lastLrc) {
+    lastLrc = data.lyricLineText;
+    highlightCurrentLine(data.lyricLineText);
+  }
+}
+
+// === Lyric parsing & display ===
+let lrcLines = [];
+
+async function fetchLyrics() {
+  try {
+    const r = await fetch(apiBase + '/lyric-all', { signal: AbortSignal.timeout(3000) });
+    if (!r.ok) return;
+    const data = await r.json();
+    const raw = data.lyric || '';
+    lrcLines = parseLrc(raw);
+    renderLrc();
+    $('lyricInfo').textContent = `共 ${lrcLines.length} 行`;
+  } catch (e) { /* ignore */ }
+}
+
+function parseLrc(text) {
+  if (!text) return [];
+  const lines = text.split('\n');
+  const result = [];
+  for (const line of lines) {
+    const match = line.match(/^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
+    if (match) {
+      const sec = parseInt(match[1]) * 60 + parseInt(match[2]) + parseInt(match[3]) / (match[3].length === 2 ? 100 : 1000);
+      result.push({ time: sec, text: match[4].trim() });
+    }
+  }
+  return result.sort((a, b) => a.time - b.time);
+}
+
+function renderLrc() {
+  if (!lrcLines.length) {
+    lyricsContainer.innerHTML = '<div class="lyrics-empty">暫無歌詞</div>';
+    return;
+  }
+  lyricsContainer.innerHTML = lrcLines.map((l, i) =>
+    `<div class="lrc-line" data-idx="${i}" data-time="${l.time}">${l.text || '⋯'}</div>`
+  ).join('');
+}
+
+function highlightCurrentLine(lineText) {
+  if (!lrcLines.length) return;
+  const idx = lrcLines.findIndex(l => l.text === lineText);
+  if (idx >= 0) {
+    lyricsContainer.querySelectorAll('.lrc-line').forEach(el => el.classList.remove('active'));
+    const target = lyricsContainer.querySelector(`.lrc-line[data-idx="${idx}"]`);
+    if (target) {
+      target.classList.add('active');
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+}
+
+// === SSE subscription ===
+function startSSE() {
+  if (eventSource) { eventSource.close(); eventSource = null; }
+  try {
+    const es = new EventSource(apiBase + '/subscribe-player-status');
+    eventSource = es;
+    setConnected(true);
+
+    es.addEventListener('status', e => {
+      playerStatus = e.data.replace(/"/g, '');
+      isPlaying = playerStatus === 'playing';
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      statusBadge.textContent = playerStatus === 'playing' ? '播放中' : playerStatus === 'paused' ? '已暫停' : playerStatus === 'error' ? '錯誤' : '已停止';
+      statusBadge.className = 'status-badge ' + (playerStatus === 'playing' ? 'badge-playing' : playerStatus === 'paused' ? 'badge-paused' : playerStatus === 'error' ? 'badge-error' : 'badge-stoped');
+    });
+
+    es.addEventListener('name', e => {
+      songTitle.textContent = e.data.replace(/"/g, '');
+      lastLrc = '';
+      fetchLyrics();
+    });
+    es.addEventListener('singer', e => { songArtist.textContent = e.data.replace(/"/g, ''); });
+    es.addEventListener('albumName', e => { songAlbum.textContent = e.data.replace(/"/g, ''); });
+    es.addEventListener('lyricLineText', e => {
+      const txt = e.data.replace(/"/g, '');
+      if (txt && txt !== lastLrc) {
+        lastLrc = txt;
+        highlightCurrentLine(txt);
+      }
+    });
+    es.addEventListener('progress', e => {
+      const p = parseFloat(e.data);
+      const dur = parseFloat(songTitle.dataset.duration || 0);
+      if (dur > 0) progressFill.style.width = Math.min((p / dur) * 100, 100) + '%';
+      currentTime.textContent = fmtTime(p);
+    });
+    es.addEventListener('duration', e => {
+      const d = parseFloat(e.data);
+      songTitle.dataset.duration = d;
+      totalTime.textContent = fmtTime(d);
+    });
+    es.addEventListener('picUrl', e => {
+      const url = e.data.replace(/"/g, '');
+      if (url) {
+        coverBox.innerHTML = `<img src="${url}" alt="cover" onerror="this.parentElement.innerHTML='<span id=coverIcon>🎵</span>'">`;
+      }
+    });
+    es.addEventListener('volume', e => {
+      volume = parseInt(e.data);
+      volumeSlider.value = volume;
+      volumeLabel.textContent = volume;
+      if (!isMuted) muteBtn.textContent = volume > 50 ? '🔊' : volume > 0 ? '🔉' : '🔈';
+    });
+    es.addEventListener('mute', e => {
+      isMuted = e.data === 'true';
+      muteBtn.textContent = isMuted ? '🔇' : volume > 50 ? '🔊' : volume > 0 ? '🔉' : '🔈';
+      muteBtn.classList.toggle('muted', isMuted);
+    });
+    es.addEventListener('collect', e => {
+      isCollected = e.data === 'true';
+      updateCollectBtn();
+    });
+    es.onerror = () => {
+      setConnected(false);
+      es.close();
+      eventSource = null;
+      // Retry after 3s
+      setTimeout(startSSE, 3000);
+    };
+  } catch (e) {
+    setConnected(false);
+    setTimeout(startSSE, 3000);
+  }
+}
+
+// === Controls ===
+function togglePlay() {
+  const path = isPlaying ? '/pause' : '/play';
+  apiCallSimple(path);
+}
+
+function toggleMute() {
+  apiCallSimple(`/mute?mute=${!isMuted}`);
+}
+
+function setVolume(val) {
+  volume = val;
+  volumeLabel.textContent = val;
+  apiCallSimple(`/volume?volume=${val}`);
+}
+
+function seekClick(e) {
+  const bar = e.currentTarget;
+  const rect = bar.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  const dur = parseFloat(songTitle.dataset.duration || 0);
+  if (dur > 0) {
+    const offset = pct * dur;
+    apiCallSimple(`/seek?offset=${offset}`);
+  }
+}
+
+function toggleCollect() {
+  const path = isCollected ? '/uncollect' : '/collect';
+  apiCallSimple(path);
+}
+
+function updateCollectBtn() {
+  collectBtn.textContent = isCollected ? '❤️ 已收藏' : '♡ 收藏當前歌曲';
+  collectBtn.classList.toggle('collected', isCollected);
+}
+
+// === Polling fallback (if SSE fails) ===
+function startPolling() {
+  fetchStatus();
+  fetchLyrics();
+  if (progressTimer) clearInterval(progressTimer);
+  progressTimer = setInterval(fetchStatus, 2000);
+}
+
+// === Connect ===
+function connect() {
+  apiBase = apiUrlInput.value.trim().replace(/\/+$/, '');
+  setConnected(null);
+  if (eventSource) { eventSource.close(); eventSource = null; }
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+
+  // Try SSE first, fallback to polling
+  startSSE();
+  // Initial fetch
+  setTimeout(() => {
+    fetchStatus();
+    fetchLyrics();
+  }, 300);
+  // Fallback polling every 5s as backup
+  if (progressTimer) clearInterval(progressTimer);
+  progressTimer = setInterval(() => {
+    // Only poll if SSE disconnected
+    if (!eventSource || eventSource.readyState !== EventSource.OPEN) {
+      fetchStatus();
+    }
+  }, 5000);
+}
+
+function detectApiBase() {
+  // 自動檢測模式：
+  // - 如果頁面載入端口係 8080（代理端口），用同源（空字串）
+  // - 否則預設 127.0.0.1:23330
+  const port = window.location.port;
+  const host = window.location.hostname;
+  if (port === '8080' || port === '8000' || port === '3000') {
+    return window.location.origin;
+  }
+  // 如果係 file:// 打開，預設 localhost
+  if (window.location.protocol === 'file:') {
+    return 'http://127.0.0.1:23330';
+  }
+  // 其他情況：如果 host 唔係 127/ localhost，假設用代理同源
+  if (host && host !== '127.0.0.1' && host !== 'localhost' && host !== '0.0.0.0') {
+    return window.location.origin;
+  }
+  return 'http://127.0.0.1:23330';
+}
+
+function resetUrl() {
+  apiUrlInput.value = detectApiBase();
+  connect();
+}
+
+// === Init ===
+document.addEventListener('DOMContentLoaded', () => {
+  const detected = detectApiBase();
+  apiUrlInput.value = detected;
+  apiBase = detected;
+  connect();
+});
+</script>
+
+</body>
+</html>
